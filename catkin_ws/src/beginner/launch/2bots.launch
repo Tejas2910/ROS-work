@@ -1,0 +1,78 @@
+<launch>
+  <!-- This to make the world in gazebo-->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <!-- The path of the .world we want to open will be in given in value -->
+    <arg name="world_name" value="$(find turtlebot3_gazebo)/worlds/turtlebot3_world.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="true"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+  </include>
+
+  <!-- To add multiple robots we need to have groups with different namespaces and tf prefixes -->
+  <!-- The tf prefix would be put before the robot description and all other transforms in rviz  -->
+
+  <group ns="sherlock">
+    <!-- Define arguments for the modeltype of robot -->
+    <arg name="model" default="waffle" doc="model type [burger, waffle, waffle_pi]"/>
+    <!-- Define the initial position in which the robot would spawn -->
+    <arg name="x_pos" default="-0.5"/>
+    <arg name="y_pos" default="-0.5"/>
+    <arg name="z_pos" default="0.0"/>
+    <!-- The robot name is just a name we would need to add in the spawn arg -->
+    <arg name="robot_name"  value="sherlock" />
+    <!-- The tf_prefix is imp as it is what distinguishes all the transforms e.g. /sherlock/odom, /sherlock/base_footprint -->
+    <param name="tf_prefix" value="sherlock"/>
+    
+    <!-- here we add the urdf (robot description) file here it is xacro format it is converted and stored in robot_description -->
+    <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro " />
+    
+    <!-- Here we spawn the model with relevant arguments for the intial position urdf file param and name -->
+    <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf"  args="-urdf -model $(arg robot_name) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description "  />
+
+    <!-- Here the various joints and their things are published this wont change -->
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+
+    <!-- here the robot state is published this wont change -->
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+      <param name="publish_frequency" type="double" value="50.0" />
+    </node>
+
+  </group>
+
+
+  
+  <group ns="watson">
+
+    <arg name="model" default="burger" doc="model type [burger, waffle, waffle_pi]"/>
+    <arg name="x_pos" default="-0.5"/>
+    <arg name="y_pos" default="-1.5"/>
+    <arg name="z_pos" default="0.0"/>
+    <arg name="robot_name" value="watson"/>
+    <param name="tf_prefix" value="watson"/>
+
+    <param name="robot_description" command="$(find xacro)/xacro $(find turtlebot3_description)/urdf/turtlebot3_$(arg model).urdf.xacro " /> 
+
+    <node pkg="gazebo_ros" type="spawn_model" name="spawn_urdf"  args="-urdf -model $(arg robot_name) -x $(arg x_pos) -y $(arg y_pos) -z $(arg z_pos) -param robot_description" />
+
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher">
+      <param name="publish_frequency" type="double" value="50.0" />
+    </node>
+
+  </group>
+
+  <!-- Here we are adding a common link odom between the sherlock tf_prefix publish and the watson tf_prefix publish -->
+  <!--
+    This creates a transform between link and other_link
+    static_transform_publisher x y z qx qy qz qw link other_link  period_in_m 
+    -->
+  <node pkg="tf" type="static_transform_publisher" name="sherlock_odom" args="0 0 0 0 0 0 1 odom sherlock/odom 10" />
+  <node pkg="tf" type="static_transform_publisher" name="watson_odom" args="0 0 0 0 0 0 1 odom watson/odom 10" />
+
+  <!-- Here we are launching the rviz with 2bots.rviz open (the -d path_of_the_.rviz_file is the argument) -->
+  <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find epi1)/configs/2bots.rviz"/> -->
+
+</launch>
